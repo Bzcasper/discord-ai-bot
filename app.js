@@ -10,6 +10,7 @@ import {
 } from 'discord-interactions';
 import { getRandomEmoji, DiscordRequest } from './utils.js';
 import { getShuffledOptions, getResult } from './game.js';
+import Replicate from 'replicate';
 
 // Create an express app
 const app = express();
@@ -58,8 +59,289 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
     }
 
-    console.error(`unknown command: ${name}`);
-    return res.status(400).json({ error: 'unknown command' });
+    // "challenge" command
+    if (name === 'challenge' && id) {
+      // Interaction context
+      const context = req.body.context;
+      // User ID is in user field for (G)DMs, and member for servers
+      const userId = context === 0 ? req.body.member.user.id : req.body.user.id;
+      // User's object choice
+      const objectName = req.body.data.options[0].value;
+
+      // Create active game using message ID as the game ID
+      activeGames[id] = {
+        id: userId,
+        objectName,
+      };
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+          components: [
+            {
+              type: MessageComponentTypes.TEXT_DISPLAY,
+              // Fetches a random emoji to send from a helper function
+              content: `Rock papers scissors challenge from <@${userId}>`,
+            },
+            {
+              type: MessageComponentTypes.ACTION_ROW,
+              components: [
+                {
+                  type: MessageComponentTypes.BUTTON,
+                  // Append the game ID to use later on
+                  custom_id: `accept_button_${req.body.id}`,
+                  label: 'Accept',
+                  style: ButtonStyleTypes.PRIMARY,
+                },
+              ],
+            },
+          ],
+        },
+      });
+    }
+
+    // "imagine" command
+    if (name === 'imagine') {
+      // Defer reply
+      await res.send({
+        type: 5, // DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+      });
+
+      const prompt = req.body.data.options[0].value;
+
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
+
+      const output = await replicate.run("stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf", {
+        input: {
+          prompt: prompt
+        }
+      });
+
+      // Edit the deferred message
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+
+      await DiscordRequest(endpoint, {
+        method: 'PATCH',
+        body: {
+          embeds: [
+            {
+              title: "Your Prompt:",
+              description: `**${prompt}**`,
+              image: { url: output },
+              color: 0x2c3b54,
+              footer: {
+                text: `Requested by: ${req.body.user.username}`,
+                icon_url: req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null
+              }
+            }
+          ],
+          components: [
+            {
+              type: 1, // ACTION_ROW
+              components: [
+                {
+                  type: 2, // BUTTON
+                  style: 5, // LINK
+                  label: 'Download',
+                  url: output
+                },
+                {
+                  type: 2, // BUTTON
+                  style: 1, // PRIMARY
+                  label: 'Regenerate',
+                  custom_id: `regenerate_imagine_${encodeURIComponent(prompt)}`
+                }
+              ]
+            }
+          ],
+          components: [
+            {
+              type: 1, // ACTION_ROW
+              components: [
+                {
+                  type: 2, // BUTTON
+                  style: 1, // PRIMARY
+                  label: 'Regenerate',
+                  custom_id: `regenerate_code_${encodeURIComponent(prompt)}`
+                }
+              ]
+            }
+          ]
+      }
+    } else if (componentId.startsWith('regenerate_imagine_')) {
+      const encodedPrompt = componentId.replace('regenerate_imagine_', '');
+      const prompt = decodeURIComponent(encodedPrompt);
+
+      await res.send({
+        type: 6, // DEFERRED_UPDATE_MESSAGE
+      });
+
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
+
+      const output = await replicate.run("stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf", {
+        input: {
+          prompt: prompt
+        }
+      });
+
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      await DiscordRequest(endpoint, {
+        method: 'PATCH',
+        body: {
+          embeds: [
+            {
+              title: "Your Prompt:",
+              description: `**${prompt}**`,
+              image: { url: output },
+              color: 0x2c3b54,
+              footer: {
+                text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`,
+                icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null)
+              }
+            }
+          ],
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: 5,
+                  label: 'Download',
+                  url: output
+                },
+                {
+                  type: 2,
+                  style: 1,
+                  label: 'Regenerate',
+                  custom_id: `regenerate_imagine_${encodeURIComponent(prompt)}`
+                }
+              ]
+            }
+          ]
+        }
+      });
+    } else if (componentId.startsWith('regenerate_write_')) {
+      const encodedPrompt = componentId.replace('regenerate_write_', '');
+      const prompt = decodeURIComponent(encodedPrompt);
+
+      await res.send({
+        type: 6, // DEFERRED_UPDATE_MESSAGE
+      });
+
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
+
+      const output = await replicate.run("meta/meta-llama-3-8b-instruct", {
+        input: {
+          prompt: prompt,
+          max_tokens: 500
+        }
+      });
+
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      await DiscordRequest(endpoint, {
+        method: 'PATCH',
+        body: {
+          embeds: [
+            {
+              title: "Your Prompt:",
+              description: `**${prompt}**`,
+              fields: [
+                {
+                  name: "Generated Text:",
+                  value: output.join('')
+                }
+              ],
+              color: 0x1dbac8,
+              footer: {
+                text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`,
+                icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null)
+              }
+            }
+          ],
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: 1,
+                  label: 'Regenerate',
+                  custom_id: `regenerate_write_${encodeURIComponent(prompt)}`
+                }
+              ]
+            }
+          ]
+        }
+      });
+    } else if (componentId.startsWith('regenerate_code_')) {
+      const encodedPrompt = componentId.replace('regenerate_code_', '');
+      const prompt = decodeURIComponent(encodedPrompt);
+
+      await res.send({
+        type: 6, // DEFERRED_UPDATE_MESSAGE
+      });
+
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
+
+      const output = await replicate.run("codellama/codellama-34b-instruct", {
+        input: {
+          prompt: prompt,
+          max_tokens: 500
+        }
+      });
+
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      await DiscordRequest(endpoint, {
+        method: 'PATCH',
+        body: {
+          embeds: [
+            {
+              title: "Your Prompt:",
+              description: `**${prompt}**`,
+              fields: [
+                {
+                  name: "Generated Code:",
+                  value: `\`\`\`\n${output.join('')}\n\`\`\``
+                }
+              ],
+              color: 0x757d8c,
+              footer: {
+                text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`,
+                icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null)
+              }
+            }
+          ],
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: 1,
+                  label: 'Regenerate',
+                  custom_id: `regenerate_code_${encodeURIComponent(prompt)}`
+                }
+              ]
+            }
+          ]
+        }
+      });
+    }
+
+    return;
   }
 
   console.error('unknown interaction type', type);

@@ -44,6 +44,66 @@ const CHALLENGE_COMMAND = {
   contexts: [0, 2],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND];
+// Imagine command
+const IMAGINE_COMMAND = {
+  name: 'imagine',
+  description: 'Generate art from your prompt',
+  options: [
+    {
+      type: 3,
+      name: 'prompt',
+      description: 'Your prompt to generate the art',
+      required: true,
+    },
+  ],
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
+// Write command
+const WRITE_COMMAND = {
+  name: 'write',
+  description: 'Generate text content from your prompt',
+  options: [
+    {
+      type: 3,
+      name: 'prompt',
+      description: 'Your prompt to generate text',
+      required: true,
+    },
+  ],
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
+// Code command
+const CODE_COMMAND = {
+  name: 'code',
+  description: 'Generate code from your prompt',
+  options: [
+    {
+      type: 3,
+      name: 'prompt',
+      description: 'Your prompt to generate code',
+      required: true,
+    },
+  ],
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
+// Help command
+const HELP_COMMAND = {
+  name: 'help',
+  description: 'Get help with available commands',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
+const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, IMAGINE_COMMAND, WRITE_COMMAND, CODE_COMMAND, HELP_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
