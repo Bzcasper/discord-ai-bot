@@ -208,6 +208,26 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
     }
 
+    if (name === 'help') {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          embeds: [{
+            title: "🤖 AI Bot Commands",
+            description: "Here are the available commands:",
+            fields: [
+              { name: "/imagine <prompt>", value: "Generate an image from your prompt using Stable Diffusion" },
+              { name: "/write <prompt>", value: "Generate text content from your prompt using Llama" },
+              { name: "/code <prompt>", value: "Generate code from your prompt using CodeLlama" },
+              { name: "/help", value: "Show this help message" }
+            ],
+            color: 0x0099ff,
+            footer: { text: "Use / to trigger commands" }
+          }]
+        }
+      });
+    }
+
   }
 
   if (type === InteractionType.MESSAGE_COMPONENT) {
