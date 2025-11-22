@@ -18,6 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // To keep track of our active games
 const activeGames = {};
+const userRequests = {}; // user id to last request timestamp
 
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
@@ -111,6 +112,22 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const prompt = req.body.data.options[0].value;
       console.log(`[${new Date().toISOString()}] User ${req.body.user.username} requested imagine: ${prompt}`);
 
+      if (userRequests[req.body.user.id] && Date.now() - userRequests[req.body.user.id] < 60000) {
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "⏰ Rate Limited",
+              description: "Please wait 1 minute before making another request.",
+              color: 0xffa500
+            }]
+          }
+        });
+        return;
+      }
+      userRequests[req.body.user.id] = Date.now();
+
       if (prompt.length > 1000) {
         const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
         await DiscordRequest(endpoint, {
@@ -198,6 +215,22 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const prompt = req.body.data.options[0].value;
       console.log(`[${new Date().toISOString()}] User ${req.body.user.username} requested write: ${prompt}`);
 
+      if (userRequests[req.body.user.id] && Date.now() - userRequests[req.body.user.id] < 60000) {
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "⏰ Rate Limited",
+              description: "Please wait 1 minute before making another request.",
+              color: 0xffa500
+            }]
+          }
+        });
+        return;
+      }
+      userRequests[req.body.user.id] = Date.now();
+
       if (prompt.length > 1000) {
         const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
         await DiscordRequest(endpoint, {
@@ -256,6 +289,22 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const prompt = req.body.data.options[0].value;
       console.log(`[${new Date().toISOString()}] User ${req.body.user.username} requested code: ${prompt}`);
 
+      if (userRequests[req.body.user.id] && Date.now() - userRequests[req.body.user.id] < 60000) {
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "⏰ Rate Limited",
+              description: "Please wait 1 minute before making another request.",
+              color: 0xffa500
+            }]
+          }
+        });
+        return;
+      }
+      userRequests[req.body.user.id] = Date.now();
+
       if (prompt.length > 1000) {
         const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
         await DiscordRequest(endpoint, {
@@ -313,6 +362,22 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       await res.send({ type: 5 });
       const prompt = req.body.data.options[0].value;
       console.log(`[${new Date().toISOString()}] User ${req.body.user.username} requested music: ${prompt}`);
+
+      if (userRequests[req.body.user.id] && Date.now() - userRequests[req.body.user.id] < 60000) {
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "⏰ Rate Limited",
+              description: "Please wait 1 minute before making another request.",
+              color: 0xffa500
+            }]
+          }
+        });
+        return;
+      }
+      userRequests[req.body.user.id] = Date.now();
 
       if (prompt.length > 500) {
         const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
@@ -564,7 +629,37 @@ return res.status(400).json({ error: 'unknown interaction type' });
 });
 
 app.get('/', (req, res) => {
-  res.send('Discord AI Bot is running!');
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discord AI Bot Status</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0; padding: 50px; }
+    h1 { font-size: 3em; margin-bottom: 20px; }
+    p { font-size: 1.2em; margin: 10px 0; }
+    ul { list-style: none; padding: 0; }
+    li { display: inline-block; margin: 10px; padding: 10px 20px; background: rgba(255,255,255,0.2); border-radius: 10px; }
+    .status { color: #00ff00; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>🤖 Discord AI Bot Status</h1>
+  <p class="status">✅ Bot is Online and Running!</p>
+  <p>Available Commands:</p>
+  <ul>
+    <li>/imagine - Generate images</li>
+    <li>/write - Generate text</li>
+    <li>/code - Generate code</li>
+    <li>/music - Generate music</li>
+    <li>/help - Get help</li>
+  </ul>
+  <p>Powered by Replicate AI | Rate Limited to 1 request per minute per user</p>
+</body>
+</html>
+  `);
 });
 
 module.exports = app;
