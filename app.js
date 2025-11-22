@@ -563,4 +563,4 @@ return res.status(400).json({ error: 'unknown interaction type' });
   return res.status(400).json({ error: 'unknown interaction type' });
 });
 
-export default app;
+module.exports = app;
