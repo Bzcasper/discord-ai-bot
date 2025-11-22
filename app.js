@@ -138,208 +138,161 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               }
             }
           ],
-          components: [
-            {
-              type: 1, // ACTION_ROW
-              components: [
-                {
-                  type: 2, // BUTTON
-                  style: 5, // LINK
-                  label: 'Download',
-                  url: output
-                },
-                {
-                  type: 2, // BUTTON
-                  style: 1, // PRIMARY
-                  label: 'Regenerate',
-                  custom_id: `regenerate_imagine_${encodeURIComponent(prompt)}`
-                }
-              ]
-            }
-          ],
-          components: [
-            {
-              type: 1, // ACTION_ROW
-              components: [
-                {
-                  type: 2, // BUTTON
-                  style: 1, // PRIMARY
-                  label: 'Regenerate',
-                  custom_id: `regenerate_code_${encodeURIComponent(prompt)}`
-                }
-              ]
-            }
-          ]
+           components: [
+             {
+               type: 1, // ACTION_ROW
+               components: [
+                 {
+                   type: 2, // BUTTON
+                   style: 5, // LINK
+                   label: 'Download',
+                   url: output
+                 },
+                 {
+                   type: 2, // BUTTON
+                   style: 1, // PRIMARY
+                   label: 'Regenerate',
+                   custom_id: `regenerate_imagine_${encodeURIComponent(prompt)}`
+                 }
+               ]
+             }
+           ]
       }
-    } else if (componentId.startsWith('regenerate_imagine_')) {
-      const encodedPrompt = componentId.replace('regenerate_imagine_', '');
-      const prompt = decodeURIComponent(encodedPrompt);
+    }
 
-      await res.send({
-        type: 6, // DEFERRED_UPDATE_MESSAGE
-      });
-
-      const replicate = new Replicate({
-        auth: process.env.REPLICATE_API_TOKEN,
-      });
-
-      const output = await replicate.run("stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf", {
-        input: {
-          prompt: prompt
-        }
-      });
-
-      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-
+    if (name === 'write') {
+      await res.send({ type: 5 });
+      const prompt = req.body.data.options[0].value;
+      const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+      const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input: { prompt, max_tokens: 500 } });
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
       await DiscordRequest(endpoint, {
         method: 'PATCH',
         body: {
-          embeds: [
-            {
-              title: "Your Prompt:",
-              description: `**${prompt}**`,
-              image: { url: output },
-              color: 0x2c3b54,
-              footer: {
-                text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`,
-                icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null)
-              }
-            }
-          ],
-          components: [
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 5,
-                  label: 'Download',
-                  url: output
-                },
-                {
-                  type: 2,
-                  style: 1,
-                  label: 'Regenerate',
-                  custom_id: `regenerate_imagine_${encodeURIComponent(prompt)}`
-                }
-              ]
-            }
-          ]
+          embeds: [{
+            title: "Your Prompt:",
+            description: `**${prompt}**`,
+            fields: [{ name: "Generated Text:", value: output.join('') }],
+            color: 0x1dbac8,
+            footer: { text: `Requested by: ${req.body.user.username}`, icon_url: req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null }
+          }],
+          components: [{
+            type: 1,
+            components: [{ type: 2, style: 1, label: 'Regenerate', custom_id: `regenerate_write_${encodeURIComponent(prompt)}` }]
+          }]
+        }
+      });
+    }
+
+    if (name === 'code') {
+      await res.send({ type: 5 });
+      const prompt = req.body.data.options[0].value;
+      const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+      const output = await replicate.run("codellama/codellama-34b-instruct", { input: { prompt, max_tokens: 500 } });
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+      await DiscordRequest(endpoint, {
+        method: 'PATCH',
+        body: {
+          embeds: [{
+            title: "Your Prompt:",
+            description: `**${prompt}**`,
+            fields: [{ name: "Generated Code:", value: `\`\`\`\n${output.join('')}\n\`\`\`` }],
+            color: 0x757d8c,
+            footer: { text: `Requested by: ${req.body.user.username}`, icon_url: req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null }
+          }],
+          components: [{
+            type: 1,
+            components: [{ type: 2, style: 1, label: 'Regenerate', custom_id: `regenerate_code_${encodeURIComponent(prompt)}` }]
+          }]
+        }
+      });
+    }
+
+  }
+
+  if (type === InteractionType.MESSAGE_COMPONENT) {
+    const componentId = data.custom_id;
+    if (componentId.startsWith('regenerate_imagine_')) {
+      const encodedPrompt = componentId.replace('regenerate_imagine_', '');
+      const prompt = decodeURIComponent(encodedPrompt);
+      await res.send({ type: 6 });
+      const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+      const output = await replicate.run("stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf", { input: { prompt } });
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+      await DiscordRequest(endpoint, {
+        method: 'PATCH',
+        body: {
+          embeds: [{
+            title: "Your Prompt:",
+            description: `**${prompt}**`,
+            image: { url: output },
+            color: 0x2c3b54,
+            footer: { text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`, icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null) }
+          }],
+          components: [{
+            type: 1,
+            components: [
+              { type: 2, style: 5, label: 'Download', url: output },
+              { type: 2, style: 1, label: 'Regenerate', custom_id: `regenerate_imagine_${encodeURIComponent(prompt)}` }
+            ]
+          }]
         }
       });
     } else if (componentId.startsWith('regenerate_write_')) {
       const encodedPrompt = componentId.replace('regenerate_write_', '');
       const prompt = decodeURIComponent(encodedPrompt);
-
-      await res.send({
-        type: 6, // DEFERRED_UPDATE_MESSAGE
-      });
-
-      const replicate = new Replicate({
-        auth: process.env.REPLICATE_API_TOKEN,
-      });
-
-      const output = await replicate.run("meta/meta-llama-3-8b-instruct", {
-        input: {
-          prompt: prompt,
-          max_tokens: 500
-        }
-      });
-
+      await res.send({ type: 6 });
+      const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+      const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input: { prompt, max_tokens: 500 } });
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-
       await DiscordRequest(endpoint, {
         method: 'PATCH',
         body: {
-          embeds: [
-            {
-              title: "Your Prompt:",
-              description: `**${prompt}**`,
-              fields: [
-                {
-                  name: "Generated Text:",
-                  value: output.join('')
-                }
-              ],
-              color: 0x1dbac8,
-              footer: {
-                text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`,
-                icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null)
-              }
-            }
-          ],
-          components: [
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 1,
-                  label: 'Regenerate',
-                  custom_id: `regenerate_write_${encodeURIComponent(prompt)}`
-                }
-              ]
-            }
-          ]
+          embeds: [{
+            title: "Your Prompt:",
+            description: `**${prompt}**`,
+            fields: [{ name: "Generated Text:", value: output.join('') }],
+            color: 0x1dbac8,
+            footer: { text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`, icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null) }
+          }],
+          components: [{
+            type: 1,
+            components: [{ type: 2, style: 1, label: 'Regenerate', custom_id: `regenerate_write_${encodeURIComponent(prompt)}` }]
+          }]
         }
       });
     } else if (componentId.startsWith('regenerate_code_')) {
       const encodedPrompt = componentId.replace('regenerate_code_', '');
       const prompt = decodeURIComponent(encodedPrompt);
-
-      await res.send({
-        type: 6, // DEFERRED_UPDATE_MESSAGE
-      });
-
-      const replicate = new Replicate({
-        auth: process.env.REPLICATE_API_TOKEN,
-      });
-
-      const output = await replicate.run("codellama/codellama-34b-instruct", {
-        input: {
-          prompt: prompt,
-          max_tokens: 500
-        }
-      });
-
+      await res.send({ type: 6 });
+      const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+      const output = await replicate.run("codellama/codellama-34b-instruct", { input: { prompt, max_tokens: 500 } });
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-
       await DiscordRequest(endpoint, {
         method: 'PATCH',
         body: {
-          embeds: [
-            {
-              title: "Your Prompt:",
-              description: `**${prompt}**`,
-              fields: [
-                {
-                  name: "Generated Code:",
-                  value: `\`\`\`\n${output.join('')}\n\`\`\``
-                }
-              ],
-              color: 0x757d8c,
-              footer: {
-                text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`,
-                icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null)
-              }
-            }
-          ],
-          components: [
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 1,
-                  label: 'Regenerate',
-                  custom_id: `regenerate_code_${encodeURIComponent(prompt)}`
-                }
-              ]
-            }
-          ]
+          embeds: [{
+            title: "Your Prompt:",
+            description: `**${prompt}**`,
+            fields: [{ name: "Generated Code:", value: `\`\`\`\n${output.join('')}\n\`\`\`` }],
+            color: 0x757d8c,
+            footer: { text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`, icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null) }
+          }],
+          components: [{
+            type: 1,
+            components: [{ type: 2, style: 1, label: 'Regenerate', custom_id: `regenerate_code_${encodeURIComponent(prompt)}` }]
+          }]
         }
       });
     }
+  }
+
+console.error('unknown interaction type', type);
+return res.status(400).json({ error: 'unknown interaction type' });
+
+app.listen(PORT, () => {
+  console.log('Listening on port', PORT);
+});
 
     return;
   }
