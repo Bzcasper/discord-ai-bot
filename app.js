@@ -109,16 +109,49 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
 
       const prompt = req.body.data.options[0].value;
+      console.log(`[${new Date().toISOString()}] User ${req.body.user.username} requested imagine: ${prompt}`);
+
+      if (prompt.length > 1000) {
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Prompt is too long. Please keep it under 1000 characters.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
 
       const replicate = new Replicate({
         auth: process.env.REPLICATE_API_TOKEN,
       });
 
-      const output = await replicate.run("stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf", {
-        input: {
-          prompt: prompt
-        }
-      });
+      let output;
+      try {
+        output = await replicate.run("stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf", {
+          input: {
+            prompt: prompt
+          }
+        });
+      } catch (error) {
+        console.error('Image generation error:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to generate image. Please try again.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
 
       // Edit the deferred message
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
@@ -163,8 +196,42 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     if (name === 'write') {
       await res.send({ type: 5 });
       const prompt = req.body.data.options[0].value;
+      console.log(`[${new Date().toISOString()}] User ${req.body.user.username} requested write: ${prompt}`);
+
+      if (prompt.length > 1000) {
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Prompt is too long. Please keep it under 1000 characters.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
+
       const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-      const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input: { prompt, max_tokens: 500 } });
+      let output;
+      try {
+        output = await replicate.run("meta/meta-llama-3-8b-instruct", { input: { prompt, max_tokens: 500 } });
+      } catch (error) {
+        console.error('Text generation error:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to generate text. Please try again.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
       await DiscordRequest(endpoint, {
         method: 'PATCH',
@@ -187,8 +254,42 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     if (name === 'code') {
       await res.send({ type: 5 });
       const prompt = req.body.data.options[0].value;
+      console.log(`[${new Date().toISOString()}] User ${req.body.user.username} requested code: ${prompt}`);
+
+      if (prompt.length > 1000) {
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Prompt is too long. Please keep it under 1000 characters.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
+
       const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-      const output = await replicate.run("codellama/codellama-34b-instruct", { input: { prompt, max_tokens: 500 } });
+      let output;
+      try {
+        output = await replicate.run("codellama/codellama-34b-instruct", { input: { prompt, max_tokens: 500 } });
+      } catch (error) {
+        console.error('Code generation error:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to generate code. Please try again.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
       await DiscordRequest(endpoint, {
         method: 'PATCH',
@@ -208,21 +309,80 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
     }
 
+    if (name === 'music') {
+      await res.send({ type: 5 });
+      const prompt = req.body.data.options[0].value;
+      console.log(`[${new Date().toISOString()}] User ${req.body.user.username} requested music: ${prompt}`);
+
+      if (prompt.length > 500) {
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Prompt is too long. Please keep it under 500 characters.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
+
+      const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+      try {
+        const output = await replicate.run("meta/musicgen", { input: { prompt_a: prompt, duration: 10 } });
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "🎵 Your Music Prompt:",
+              description: `**${prompt}**`,
+              color: 0xff6b6b,
+              footer: { text: `Requested by: ${req.body.user.username}`, icon_url: req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null }
+            }],
+            components: [{
+              type: 1,
+              components: [
+                { type: 2, style: 5, label: '🎧 Play/Download', url: output },
+                { type: 2, style: 1, label: '🔄 Regenerate', custom_id: `regenerate_music_${encodeURIComponent(prompt)}` }
+              ]
+            }]
+          }
+        });
+      } catch (error) {
+        console.error('Music generation error:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to generate music. Please try again later.",
+              color: 0xff0000
+            }]
+          }
+        });
+      }
+    }
+
     if (name === 'help') {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           embeds: [{
-            title: "🤖 AI Bot Commands",
-            description: "Here are the available commands:",
+            title: "🤖 AI Content Generator Bot",
+            description: "Generate images, text, code, and music with AI!",
             fields: [
-              { name: "/imagine <prompt>", value: "Generate an image from your prompt using Stable Diffusion" },
-              { name: "/write <prompt>", value: "Generate text content from your prompt using Llama" },
-              { name: "/code <prompt>", value: "Generate code from your prompt using CodeLlama" },
+              { name: "/imagine <prompt>", value: "Generate an image from your prompt" },
+              { name: "/write <prompt>", value: "Generate text content from your prompt" },
+              { name: "/code <prompt>", value: "Generate code from your prompt" },
+              { name: "/music <prompt>", value: "Generate music from your prompt" },
               { name: "/help", value: "Show this help message" }
             ],
             color: 0x0099ff,
-            footer: { text: "Use / to trigger commands" }
+            footer: { text: "Powered by Replicate AI | Use / to trigger commands" }
           }]
         }
       });
@@ -237,7 +397,24 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const prompt = decodeURIComponent(encodedPrompt);
       await res.send({ type: 6 });
       const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-      const output = await replicate.run("stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf", { input: { prompt } });
+      let output;
+      try {
+        output = await replicate.run("stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf", { input: { prompt } });
+      } catch (error) {
+        console.error('Image regenerate error:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to regenerate image. Please try again.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
       await DiscordRequest(endpoint, {
         method: 'PATCH',
@@ -263,7 +440,24 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const prompt = decodeURIComponent(encodedPrompt);
       await res.send({ type: 6 });
       const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-      const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input: { prompt, max_tokens: 500 } });
+      let output;
+      try {
+        output = await replicate.run("meta/meta-llama-3-8b-instruct", { input: { prompt, max_tokens: 500 } });
+      } catch (error) {
+        console.error('Text regenerate error:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to regenerate text. Please try again.",
+              color: 0xff0000
+            }]
+          }
+        });
+        return;
+      }
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
       await DiscordRequest(endpoint, {
         method: 'PATCH',
@@ -286,24 +480,79 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const prompt = decodeURIComponent(encodedPrompt);
       await res.send({ type: 6 });
       const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-      const output = await replicate.run("codellama/codellama-34b-instruct", { input: { prompt, max_tokens: 500 } });
-      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-      await DiscordRequest(endpoint, {
-        method: 'PATCH',
-        body: {
-          embeds: [{
-            title: "Your Prompt:",
-            description: `**${prompt}**`,
-            fields: [{ name: "Generated Code:", value: `\`\`\`\n${output.join('')}\n\`\`\`` }],
-            color: 0x757d8c,
-            footer: { text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`, icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null) }
-          }],
-          components: [{
-            type: 1,
-            components: [{ type: 2, style: 1, label: 'Regenerate', custom_id: `regenerate_code_${encodeURIComponent(prompt)}` }]
-          }]
-        }
-      });
+      try {
+        const output = await replicate.run("codellama/codellama-34b-instruct", { input: { prompt, max_tokens: 500 } });
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "Your Prompt:",
+              description: `**${prompt}**`,
+              fields: [{ name: "Generated Code:", value: `\`\`\`\n${output.join('')}\n\`\`\`` }],
+              color: 0x757d8c,
+              footer: { text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`, icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null) }
+            }],
+            components: [{
+              type: 1,
+              components: [{ type: 2, style: 1, label: 'Regenerate', custom_id: `regenerate_code_${encodeURIComponent(prompt)}` }]
+            }]
+          }
+        });
+      } catch (error) {
+        console.error('Code regenerate error:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to regenerate code. Please try again.",
+              color: 0xff0000
+            }]
+          }
+        });
+      }
+    } else if (componentId.startsWith('regenerate_music_')) {
+      const encodedPrompt = componentId.replace('regenerate_music_', '');
+      const prompt = decodeURIComponent(encodedPrompt);
+      await res.send({ type: 6 });
+      const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+      try {
+        const output = await replicate.run("meta/musicgen", { input: { prompt_a: prompt, duration: 10 } });
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "🎵 Your Music Prompt:",
+              description: `**${prompt}**`,
+              color: 0xff6b6b,
+              footer: { text: `Requested by: ${req.body.member ? req.body.member.user.username : req.body.user.username}`, icon_url: req.body.member ? (req.body.member.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.member.user.id}/${req.body.member.user.avatar}.png` : null) : (req.body.user.avatar ? `https://cdn.discordapp.com/avatars/${req.body.user.id}/${req.body.user.avatar}.png` : null) }
+            }],
+            components: [{
+              type: 1,
+              components: [
+                { type: 2, style: 5, label: '🎧 Play/Download', url: output },
+                { type: 2, style: 1, label: '🔄 Regenerate', custom_id: `regenerate_music_${encodeURIComponent(prompt)}` }
+              ]
+            }]
+          }
+        });
+      } catch (error) {
+        console.error('Music regenerate error:', error);
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to regenerate music. Please try again.",
+              color: 0xff0000
+            }]
+          }
+        });
+      }
     }
   }
 

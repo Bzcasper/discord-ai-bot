@@ -95,6 +95,23 @@ const CODE_COMMAND = {
   contexts: [0, 1, 2],
 };
 
+// Music command
+const MUSIC_COMMAND = {
+  name: 'music',
+  description: 'Generate music from your prompt',
+  options: [
+    {
+      type: 3,
+      name: 'prompt',
+      description: 'Your prompt to generate music',
+      required: true,
+    },
+  ],
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
 // Help command
 const HELP_COMMAND = {
   name: 'help',
@@ -104,6 +121,6 @@ const HELP_COMMAND = {
   contexts: [0, 1, 2],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, IMAGINE_COMMAND, WRITE_COMMAND, CODE_COMMAND, HELP_COMMAND];
+const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, IMAGINE_COMMAND, WRITE_COMMAND, CODE_COMMAND, MUSIC_COMMAND, HELP_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
