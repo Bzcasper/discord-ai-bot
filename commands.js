@@ -112,6 +112,24 @@ const MUSIC_COMMAND = {
   contexts: [0, 1, 2],
 };
 
+// History command
+const HISTORY_COMMAND = {
+  name: 'history',
+  description: 'View your recent generation history',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
+// Prompts command
+const PROMPTS_COMMAND = {
+  name: 'prompts',
+  description: 'Get helpful prompts to get started',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
 // Help command
 const HELP_COMMAND = {
   name: 'help',
@@ -121,6 +139,6 @@ const HELP_COMMAND = {
   contexts: [0, 1, 2],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, IMAGINE_COMMAND, WRITE_COMMAND, CODE_COMMAND, MUSIC_COMMAND, HELP_COMMAND];
+const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, IMAGINE_COMMAND, WRITE_COMMAND, CODE_COMMAND, MUSIC_COMMAND, HISTORY_COMMAND, PROMPTS_COMMAND, HELP_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

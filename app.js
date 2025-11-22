@@ -11,6 +11,7 @@ import {
 import { getRandomEmoji, DiscordRequest } from './utils.js';
 import { getShuffledOptions, getResult } from './game.js';
 import Replicate from 'replicate';
+import { kv } from '@vercel/kv';
 
 // Create an express app
 const app = express();
@@ -432,6 +433,73 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     }
 
+    if (name === 'history') {
+      try {
+        const history = await kv.lrange(`user:${req.body.user.id}:history`, 0, 4);
+        const embeds = history.map(item => {
+          const data = JSON.parse(item);
+          return {
+            title: `${data.type.charAt(0).toUpperCase() + data.type.slice(1)} - ${new Date(data.timestamp).toLocaleDateString()}`,
+            description: `**Prompt:** ${data.prompt}\n**Result:** ${data.result.length > 100 ? data.result.slice(0, 100) + '...' : data.result}`,
+            color: 0x0099ff,
+            timestamp: new Date(data.timestamp).toISOString()
+          };
+        });
+        if (embeds.length === 0) {
+          embeds.push({
+            title: "📜 No History",
+            description: "You haven't generated anything yet. Start with /imagine or /write!",
+            color: 0x808080
+          });
+        }
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { embeds }
+        });
+      } catch (error) {
+        console.error('History retrieval error:', error);
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            embeds: [{
+              title: "❌ Error",
+              description: "Failed to retrieve your history. Please try again.",
+              color: 0xff0000
+            }]
+          }
+        });
+      }
+    }
+
+    if (name === 'prompts') {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          embeds: [{
+            title: "📝 Helpful Prompts",
+            description: "Here are some trending prompts to get you started:",
+            fields: [
+              { name: "Magic Spell Book", value: "mdjrny-v4 style, magic spell book sitting on a table in the catacombs, hypermaximalist, insanely detailed and intricate, octane render, unreal engine, 8k, by greg rutkowski and Peter Mohrbacher and magali villeneuve" },
+              { name: "Gorgeous Blonde", value: "mdjrny-v4 style, photo of a gorgeous blonde female in the style of stefan kostic, realistic, half body shot, sharp focus, 8 k high definition, insanely detailed, intricate, elegant, art by stanley lau and artgerm, extreme blur cherry blossoms background" },
+              { name: "Japanese Shrine", value: "mdjrny-v4 style, japanese style shrine on top of a misty mountain overgrown, hyper realistic, lush gnarly plants, 8 k, denoised, by greg rutkowski, tom bagshaw, james gurney cinematic lighting" },
+              { name: "Fairytale Village", value: "mdjrny-v4 style, valley, fairytale treehouse village covered,, matte painting, highly detailed, dynamic lighting, cinematic, realism, realistic, photo real, sunset,detailed, high contrast, denoised, centered, michael whelan" }
+            ],
+            color: 0x2f3136,
+            footer: { text: "Inspired by Midjourney styles | Visit prompthero.com for more" }
+          }],
+          components: [{
+            type: 1,
+            components: [{
+              type: 2,
+              style: 5,
+              label: 'More Prompts',
+              url: 'https://prompthero.com/openjourney-prompts'
+            }]
+          }]
+        }
+      });
+    }
+
     if (name === 'help') {
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -444,12 +512,16 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               { name: "/write <prompt>", value: "Generate text content from your prompt" },
               { name: "/code <prompt>", value: "Generate code from your prompt" },
               { name: "/music <prompt>", value: "Generate music from your prompt" },
+              { name: "/prompts", value: "Get helpful prompts to get started" },
+              { name: "/history", value: "View your recent generations" },
               { name: "/help", value: "Show this help message" }
             ],
             color: 0x0099ff,
-            footer: { text: "Powered by Replicate AI | Use / to trigger commands" }
+            footer: { text: "Powered by Replicate AI | Rate Limited to 1 request per minute per user" }
           }]
         }
+      });
+    }
       });
     }
 
@@ -617,9 +689,17 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             }]
           }
         });
-      }
+          }
+        }
+      });
+
+      await kv.lpush(`user:${req.body.user.id}:history`, JSON.stringify({
+        type: 'music',
+        prompt,
+        result: output,
+        timestamp: Date.now()
+      }));
     }
-  }
 
 console.error('unknown interaction type', type);
 return res.status(400).json({ error: 'unknown interaction type' });
