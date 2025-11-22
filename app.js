@@ -563,4 +563,8 @@ return res.status(400).json({ error: 'unknown interaction type' });
   return res.status(400).json({ error: 'unknown interaction type' });
 });
 
+app.get('/', (req, res) => {
+  res.send('Discord AI Bot is running!');
+});
+
 module.exports = app;
